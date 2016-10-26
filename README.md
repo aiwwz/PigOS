@@ -1,2 +1,2 @@
-# ToySys
-a Toy System for study.
+# PigOS
+a mini system for study.
