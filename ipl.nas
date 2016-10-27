@@ -1,6 +1,8 @@
-; PigOS-ipl
-; TAB=4
-		ORG		0x7c00			; ORG指明程序的装载地址 
+; PigOS--IPL
+; Tab = 4
+CYLS	EQU		10				; 定义个宏CYLS = 10
+		
+		ORG		0x7c00			; ORG指明程序装载进内存的地址 
 
 ; 以下这段程序是标准FAT12格式软盘专用的代码
 		JMP		entry
@@ -31,30 +33,52 @@ entry:
 		MOV		SP,0x7c00		; 指向启动区
 		MOV		DS,AX			; 初始化段寄存器
 
-; 读磁盘（在这里是虚拟软盘）
+; 读磁盘，将磁盘指定位置的数据读入指定内存地址处
 		MOV		AX,0x0820
-		MOV		ES,AX
+		MOV		ES,AX			; ES:BX = 缓冲地址（指定的内存地址）
 		MOV		CH,0			; 柱面0
 		MOV		DH,0			; 磁头0
 		MOV		CL,2			; 扇区2
-
+readloop:
+		MOV		SI,0			; 用于记录读取是否失败
+retry:
 		MOV		AH,0x02			; AH=0x02 : 读盘
-		MOV		AL,1			; 1个扇区
+		MOV		AL,1			; 处理1个扇区（512字节）
 		MOV		BX,0
 		MOV		DL,0x00			; A驱动器
 		INT		0x13			; 调用磁盘BIOS
-		JC		error
-
-; 
-
-fin:
-		HLT						; 让CPU停止，等待指令
-		JMP		fin				; 无限循环
+		JNC		next			; 读取成功，跳到next继续读取
+		ADD		SI,1			; 若失败将SI加1
+		CMP		SI,5
+		JAE		error			; 错误次数超过5次，不再尝试，跳转到error
+		MOV		AH,0x00			; 这三条指令复位软盘状态
+		MOV		DL,0x00			; A驱动器
+		INT		0x13			; 重置驱动器
+		JMP		retry
+next:
+		MOV		AX,ES
+		ADD		AX,0x0020
+		MOV		ES,AX			; 把内存地址向后移512字节
+		ADD		CL,1			; 将CL加1指向下一个扇区
+		CMP		CL,18
+		JBE		readloop		; 若CL<=18则继续读取
+		MOV		CL,1			; 将扇区重置为1
+		ADD		DH,1
+		CMP		DH,2
+		JB		readloop		; 若磁头号小于2则继续读软盘反面
+		MOV		DH,0			; 若磁头号等于2则重置为0
+		ADD		CH,1			; 将柱面号CH加1
+		CMP		CH,CYLS
+		JB		readloop		; 若柱面号<CYLS则继续读下一柱面
+		
+; 读入完成后跳转到系统程序
+		MOV		[0x0ff0],CH
+		JMP		0xc200
 
 error:
 		MOV		SI,msg
 putloop:
-		MOV		AL,[SI]			; 将内存中的存储的字符赋给AL
+		MOV		AL,[SI]			; 将内存中的存储的字符赋给AL（DS为默认段寄存器）
 		ADD		SI,1			; 给SI加1
 		CMP		AL,0
 		JE		fin				; 显示完毕，跳转到fin
@@ -63,14 +87,18 @@ putloop:
 		INT		0x10			; 调用显卡BIOS（0x10号调用）
 		JMP		putloop
 
+fin:
+		HLT						; 让CPU停止，等待指令
+		JMP		fin				; 无限循环
+
 ; 信息显示部分
 msg:
 		DB		0x0a, 0x0a		; 换行两次
-		DB		"load error！"
+		DB		"load error"
 		DB		0x0a			; 换行
 		DB		0
 
-		RESB	0x7dfe-$		; 填写0x00，直到0x001fe
+		RESB	0x7dfe-$		; 填写0x00，直到0x001fe，注意0x7dfe处未被填充
 
 		DB		0x55, 0xaa		; 设计者规定第一扇区最后两个字节必须为55 AA
 								; 不然计算机会认为这张盘上没有所需的启动程序
