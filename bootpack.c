@@ -8,44 +8,31 @@ void io_store_eflags(int eflags);
 void init_palette(void); 	//palette  n.调色板
 void set_palette(int start, int end, unsigned char *rgb);
 void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, int x1, int y1);
+void init_screen(char *vram,int x, int y);
+void putfont(char *vram, int xsize, int x, int y, char c, char *font);
 
-#define COL8_000000		0
-#define COL8_FF0000		1
-#define COL8_00FF00		2
-#define COL8_FFFF00		3
-#define COL8_0000FF		4
-#define COL8_FF00FF		5
-#define COL8_00FFFF		6
-#define COL8_FFFFFF		7
-#define COL8_C6C6C6		8
-#define COL8_840000		9
-#define COL8_008400		10
-#define COL8_848400		11
-#define COL8_000084		12
-#define COL8_840084		13
-#define COL8_008484		14
-#define COL8_848484		15
+struct BOOTINFO{
+	char cyls, leds, vmode, reserve;  //reserve保留，尚无意义
+	short scrnx, scrny;
+	char *vram;
+};
 
 void HariMain(){
-	char *vram;
+	struct BOOTINFO *binfo = (struct BOOTINFO*) 0x0ff0;
 	
-	init_palette();  //初始化自定义的调色板
+	//初始化自定义的调色板
+	init_palette();
 	
-	vram = (char*)0xa0000;	
-	int xsize = 320, ysize = 200;
-	//主面板
-	boxfill8(vram, xsize, COL8_008484,  0,         0,          xsize -  1, ysize - 20);
-	//任务栏
-	boxfill8(vram, xsize, COL8_C6C6C6,  0,         ysize - 19, xsize -  1, ysize - 19);
-	boxfill8(vram, xsize, COL8_FFFFFF,  0,         ysize - 18, xsize -  1, ysize - 18);
-	boxfill8(vram, xsize, COL8_C6C6C6,  0,         ysize - 17, xsize -  1, ysize -  1);
-	//button
-	boxfill8(vram, xsize, COL8_FFFFFF,  3,         ysize - 15, 59,         ysize - 15);
-	boxfill8(vram, xsize, COL8_FFFFFF,  2,         ysize - 15,  2,         ysize -  4);
-	boxfill8(vram, xsize, COL8_848484,  3,         ysize -  4, 59,         ysize -  4);
-	boxfill8(vram, xsize, COL8_848484, 59,         ysize - 15, 59,         ysize -  5);
-	boxfill8(vram, xsize, COL8_000000,  2,         ysize -  3, 59,         ysize -  3);
-	boxfill8(vram, xsize, COL8_000000, 60,         ysize - 15, 60,         ysize -  3);
+	//初始化屏幕
+	init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
+	
+	//字符A
+	static char font_A[16] = {
+		0x00, 0x18, 0x18, 0x18, 0x18, 0x24, 0x24, 0x24,
+		0x24, 0x7e, 0x42, 0x42, 0x42, 0xe7, 0x00, 0x00
+	};
+	//显示字符A
+	putfont(binfo->vram, binfo->scrnx, 50, 50, 3, font_A);
 	
 	for(;;)
 		io_hlt;
@@ -98,3 +85,36 @@ void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, i
 	return;
 }
 
+void init_screen(char *vram, int x, int y){
+	//主面板
+	boxfill8(vram, x,	15,	0,       0,	x - 1,	y - 20);
+	//任务栏
+	boxfill8(vram, x,	8,	0,  y - 19,	x - 1,	y - 19);
+	boxfill8(vram, x,	7,	0,  y - 18,	x - 1,	y - 18);
+	boxfill8(vram, x,	8,	0,  y - 17,	x - 1,	y -  1);
+	//button
+	boxfill8(vram, x,	7,	3,  y - 15,	59,		y - 15);
+	boxfill8(vram, x, 	7,	2,  y - 15,	 2, 	y -  4);
+	boxfill8(vram, x,  15,	3,  y -  4,	59,		y -  4);
+	boxfill8(vram, x,  15, 59,  y - 15,	59,		y -  5);
+	boxfill8(vram, x,	0,	2,  y -  3,	59,		y -  3);
+	boxfill8(vram, x,	0, 60,  y - 15,	60,		y -  3);
+}
+
+void putfont(char *vram, int xsize, int x, int y, char c, char *font){
+	int i;
+	char d; //data
+	char *p;
+	for(i = 0; i <= 16; ++i){
+		p = vram + (y + i) * xsize + x;
+		d = font[i];
+		if ((d & 0x80) != 0) { p[0] = c; }
+		if ((d & 0x40) != 0) { p[1] = c; }
+		if ((d & 0x20) != 0) { p[2] = c; }
+		if ((d & 0x10) != 0) { p[3] = c; }
+		if ((d & 0x08) != 0) { p[4] = c; }
+		if ((d & 0x04) != 0) { p[5] = c; }
+		if ((d & 0x02) != 0) { p[6] = c; }
+		if ((d & 0x01) != 0) { p[7] = c; }
+	}
+}
