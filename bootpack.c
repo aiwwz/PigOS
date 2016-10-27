@@ -19,6 +19,7 @@ struct BOOTINFO{
 
 void HariMain(){
 	struct BOOTINFO *binfo = (struct BOOTINFO*) 0x0ff0;
+	extern char hankaku[4096];
 	
 	//初始化自定义的调色板
 	init_palette();
@@ -26,13 +27,12 @@ void HariMain(){
 	//初始化屏幕
 	init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
 	
-	//字符A
-	static char font_A[16] = {
-		0x00, 0x18, 0x18, 0x18, 0x18, 0x24, 0x24, 0x24,
-		0x24, 0x7e, 0x42, 0x42, 0x42, 0xe7, 0x00, 0x00
-	};
-	//显示字符A
-	putfont(binfo->vram, binfo->scrnx, 50, 50, 3, font_A);
+	//显示字符
+	putfont(binfo->vram, binfo->scrnx,  8, 8, 6, hankaku + 'P' * 16);
+	putfont(binfo->vram, binfo->scrnx, 16, 8, 6, hankaku + 'i' * 16);
+	putfont(binfo->vram, binfo->scrnx, 24, 8, 6, hankaku + 'g' * 16);
+	putfont(binfo->vram, binfo->scrnx, 32, 8, 6, hankaku + 'O' * 16);
+	putfont(binfo->vram, binfo->scrnx, 40, 8, 6, hankaku + 'S' * 16);
 	
 	for(;;)
 		io_hlt;
@@ -114,7 +114,7 @@ void putfont(char *vram, int xsize, int x, int y, char c, char *font){
 		if ((d & 0x10) != 0) { p[3] = c; }
 		if ((d & 0x08) != 0) { p[4] = c; }
 		if ((d & 0x04) != 0) { p[5] = c; }
-		if ((d & 0x02) != 0) { p[6] = c; }
+		if ((d & 0x02) != 0) { p[6] = c; }		
 		if ((d & 0x01) != 0) { p[7] = c; }
 	}
 }
