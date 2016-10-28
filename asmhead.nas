@@ -14,7 +14,7 @@ SCRNY	EQU		0x0ff6		; 分辨率Y (screen y)
 VRAM	EQU		0x0ff8		; 图像缓冲区的开始地址
 
 	ORG		0xc200
-	
+;画面模式设定	
 	MOV		AH,0x00			; VGA显卡，320*200*8位彩色
 	MOV 	AL,0x13
 	INT		0x10
