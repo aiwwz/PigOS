@@ -1,6 +1,13 @@
 /*中断处理*/
-
+#include <stdio.h>
 #include "bootpack.h"
+
+#define PORT_KEYDAT		0x0060	//端口号0x0060是键盘设备
+
+/*键盘缓冲区*/
+struct FIFO keyfifo;
+/*鼠标缓冲区*/
+struct FIFO mousefifo;
 
 /*PIC初始化*/
 void init_pic(){
@@ -25,22 +32,21 @@ void init_pic(){
 
 /*键盘中断处理程序(0x21号)*/
 void inthandler21(int *esp){
-	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
-	boxfill8(binfo->vram, binfo->scrnx, 3, 0, 30, 32 * 8 - 1, 45);
-	putstr_asc(binfo->vram, binfo->scrnx, 0, 30, 0, "INT 21 (IRQ -1) : PS/2 keyboard");
-	for(;;){
-		io_hlt();
-	}
+	unsigned char data;
+	io_out8(PIC0_OCW, 0x61); //通知PIC0 IRQ-01已经处理完毕
+	data = io_in8(PORT_KEYDAT);	//从键盘读入信息
+	fifo_put(&keyfifo, data);
+	return;
 }
 
 /*鼠标中断处理程序(0x2c号)*/
 void inthandler2c(int *esp){
-	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
-	boxfill8(binfo->vram, binfo->scrnx, 3, 0, 30, 32 * 8 - 1, 45);
-	putstr_asc(binfo->vram, binfo->scrnx, 0, 30, 0, "INT 2C (IRQ-12) : PS/2 mouse");
-	for (;;) {
-		io_hlt();
-	}
+	unsigned char data;
+	io_out8(PIC1_OCW, 0x64); //通知PIC1 IRQ-01已经处理完毕
+	io_out8(PIC0_OCW, 0x62); //通知PIC0 IRQ-02已经处理完毕
+	data = io_in8(PORT_KEYDAT);
+	fifo_put(&mousefifo, data);
+	return;
 }
 
 void inthandler27(int *esp)
@@ -51,6 +57,6 @@ void inthandler27(int *esp)
 	→  この割り込みはPIC初期化時の電気的なノイズによって発生したものなので、
 		まじめに何か処理してやる必要がない。									*/
 {
-	io_out8(PIC0_OCW2, 0x67); /* IRQ-07受付完了をPICに通知(7-1参照) */
+	io_out8(PIC0_OCW, 0x67); /* IRQ-07受付完了をPICに通知(7-1参照) */
 	return;
 }

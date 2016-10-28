@@ -13,7 +13,9 @@ struct BOOTINFO{	// 0x0ff0-0x0fff
 void io_hlt();	//CPU休息
 void io_cli();	//设置io中断
 void io_sti();
+void io_stihlt();
 void io_out8(int port, int data);
+int	 io_in8(int port);
 int  io_load_eflags();
 void io_store_eflags(int eflags);
 void load_gdtr(int limit, int adrr);
@@ -31,6 +33,15 @@ void putfont(char *vram, int xsize, int x, int y, char c, char *font);
 void putstr_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s);
 void init_mouse_cursor(char *mouse, char bc);
 void putblock(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
+#define BLACK	0
+#define RED		1
+#define GREEN	2
+#define YELLOW	3
+#define BLUE	4
+#define PURPLE	5
+#define WHITE	7
+#define LIGHT_GRAY	8
+#define BACK	15
 
 //dsctbl.c
 struct SEGMENT_DESCRIPTOR{
@@ -56,20 +67,36 @@ void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
 #define AR_CODE32_ER	0x409a
 #define AR_INTGATE32	0x008e
 
-/* int.c */
+// int.c
+struct KEYBUF {
+	unsigned char data[32];
+	int next_r, next_w;
+	int len;
+};
 void init_pic(void);
 void inthandler21(int *esp);
 void inthandler27(int *esp);
 void inthandler2c(int *esp);
 #define PIC0_ICW1		0x0020
-#define PIC0_OCW2		0x0020
+#define PIC0_OCW		0x0020
 #define PIC0_IMR		0x0021
 #define PIC0_ICW2		0x0021
 #define PIC0_ICW3		0x0021
 #define PIC0_ICW4		0x0021
 #define PIC1_ICW1		0x00a0
-#define PIC1_OCW2		0x00a0
+#define PIC1_OCW		0x00a0
 #define PIC1_IMR		0x00a1
 #define PIC1_ICW2		0x00a1
 #define PIC1_ICW3		0x00a1
 #define PIC1_ICW4		0x00a1
+
+// fifo.c
+struct FIFO{
+	unsigned char *buf;
+	int next_w, next_r, size, free, flags;
+};
+void fifo_init(struct FIFO *fifo, int size, unsigned char *buf);
+int fifo_put(struct FIFO *fifo, unsigned char data);
+int fifo_get(struct FIFO *fifo);
+int fifo_status(struct FIFO *fifo);
+
