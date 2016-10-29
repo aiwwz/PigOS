@@ -36,11 +36,10 @@ void HariMain(){
 	//初始化屏幕
 	init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
 	
+	init_mouse_cursor(mcursor, BACK);
+	
 	mx = (binfo->scrnx - 16) / 2;	//求画面中心坐标
 	my = (binfo->scrny - 19 - 16) / 2;
-	//显示鼠标
-	init_mouse_cursor(mcursor, BACK);
-	putblock(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
 		
 	enable_mouse();
 	mdec.mouse_phase = 0;
@@ -63,12 +62,24 @@ void HariMain(){
 					i = fifo_get(&mousefifo);
 					io_sti();
 					if(mouse_decode(&mdec, i) != 0){ //鼠标数据的三个字节集齐，显示出来 
+						//mouse status
 						sprintf(s, "%02X %02X %02X", mdec.mouse_buf[0], mdec.mouse_buf[1], mdec.mouse_buf[2]);
 						boxfill8(binfo->vram, binfo->scrnx, BACK, 32, 25, 31 + 8 * 8, 40);
 						putstr_asc(binfo->vram, binfo->scrnx, 32, 25, BLACK, s);
-						//mouse coordinate
+						
+						//mouse
+						boxfill8(binfo->vram, binfo->scrnx, BACK, mx, my, mx + 15, my + 15);
 						mx += mdec.x;
 						my += mdec.y;
+						if(mx < 0)
+							mx = 0;
+						if(mx > binfo->scrnx - 16)	
+							mx = binfo->scrnx - 16;
+						if(my < 0)
+							my = 0;
+						if(my > binfo->scrny - 16)
+							my = binfo->scrny - 16;
+						putblock(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
 						sprintf(s, "(%d,%d)", mx, my);
 						boxfill8(binfo->vram, binfo->scrnx, BACK, binfo->scrnx - 75, binfo->scrny - 36, binfo->scrnx - 75 + 9 * 8 - 1, binfo->scrny - 21);
 						putstr_asc(binfo->vram, binfo->scrnx, binfo->scrnx - 75, binfo->scrny - 36, BLACK, s);
