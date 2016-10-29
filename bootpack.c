@@ -1,13 +1,20 @@
 #include <stdio.h>
 #include "bootpack.h"
 
+struct MOUSE_DEC{
+	unsigned char mouse_buf[3], mouse_phase;
+	int btn, x, y;
+};
+
 extern struct FIFO keyfifo, mousefifo;
 //void wait_KBC_sendready();
 void init_keyboard();
 void enable_mouse();
+int mouse_decode(struct MOUSE_DEC *mdec, unsigned char data);
 
 void HariMain(){
 	struct BOOTINFO *binfo = (struct BOOTINFO*) ADR_BOOTINFO;
+	struct MOUSE_DEC mdec;
 	char s[40], mcursor[256], keybuf[128], mousebuf[128];
 	int mx, my, i;
 
@@ -34,32 +41,39 @@ void HariMain(){
 	//显示鼠标
 	init_mouse_cursor(mcursor, BACK);
 	putblock(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
-	
-	//显示鼠标的坐标
-	sprintf(s, "(%d,%d)", mx, my);
-	putstr_asc(binfo->vram, binfo->scrnx, binfo->scrnx - 75, binfo->scrny - 36, BLACK, s);
-	
+		
 	enable_mouse();
+	mdec.mouse_phase = 0;
 	
 	for(;;){
 		io_cli();	//屏蔽中断
 		if(fifo_status(&keyfifo) + fifo_status(&mousefifo) == 0){
 			io_stihlt();  //如果无事可做则取消屏蔽中断并休息
-		}else{
+		}
+		else
 			if(fifo_status(&keyfifo) != 0){
 				i = fifo_get(&keyfifo);
 				io_sti();
 				sprintf(s, "%02X", i);
-				boxfill8(binfo->vram, binfo->scrnx, YELLOW, 0, 25, 15, 40);
+				boxfill8(binfo->vram, binfo->scrnx, BACK, 0, 25, 15, 40);
 				putstr_asc(binfo->vram, binfo->scrnx, 0, 25, BLACK, s);
-			}else if(fifo_status(&mousefifo) != 0){
-				i = fifo_get(&mousefifo);
-				io_sti();
-				sprintf(s, "%02X", i);
-				boxfill8(binfo->vram, binfo->scrnx, YELLOW, 32, 25, 47, 40);
-				putstr_asc(binfo->vram, binfo->scrnx, 32, 25, BLACK, s);
 			}
-		}
+			else 
+				if(fifo_status(&mousefifo) != 0){
+					i = fifo_get(&mousefifo);
+					io_sti();
+					if(mouse_decode(&mdec, i) != 0){ //鼠标数据的三个字节集齐，显示出来 
+						sprintf(s, "%02X %02X %02X", mdec.mouse_buf[0], mdec.mouse_buf[1], mdec.mouse_buf[2]);
+						boxfill8(binfo->vram, binfo->scrnx, BACK, 32, 25, 31 + 8 * 8, 40);
+						putstr_asc(binfo->vram, binfo->scrnx, 32, 25, BLACK, s);
+						//mouse coordinate
+						mx += mdec.x;
+						my += mdec.y;
+						sprintf(s, "(%d,%d)", mx, my);
+						boxfill8(binfo->vram, binfo->scrnx, BACK, binfo->scrnx - 75, binfo->scrny - 36, binfo->scrnx - 75 + 9 * 8 - 1, binfo->scrny - 21);
+						putstr_asc(binfo->vram, binfo->scrnx, binfo->scrnx - 75, binfo->scrny - 36, BLACK, s);
+					}
+				}	
 	}
 }
 
@@ -95,6 +109,34 @@ void enable_mouse(){
 	io_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
 	wait_KBC_sendready();
 	io_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
+	
 	return;
 }
 
+int mouse_decode(struct MOUSE_DEC *mdec, unsigned char data){
+	if(mdec->mouse_phase == 0){
+		if(data == 0xfa)//等待鼠标的0xfa状态
+			mdec->mouse_phase = 1;
+		return 0;
+	}
+	if(mdec->mouse_phase == 1){
+		mdec->mouse_buf[0] = data;
+		mdec->mouse_phase = 2;
+		return 0;
+	}
+	if(mdec->mouse_phase == 2){
+		mdec->mouse_buf[1] = data;
+		mdec->mouse_phase = 3;
+		return 0;
+	}
+	if(mdec->mouse_phase == 3){
+		mdec->mouse_buf[2] = data;
+		mdec->mouse_phase = 1;
+		mdec->btn = mdec->mouse_buf[0] & 0x07;
+		mdec->x = (char)mdec->mouse_buf[1]; //转化为带符号类型
+		mdec->y = (char)mdec->mouse_buf[2];
+		mdec->y = - mdec->y;
+		return 1;
+	}
+	return -1;
+}
