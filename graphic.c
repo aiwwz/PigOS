@@ -138,3 +138,27 @@ void putblock(char *vram, int vxsize, int pxsize, int pysize,
 	}
 	return;
 }
+
+void init_old_back(char *old_back){
+	int i;
+	for(i = 0; i < 256; ++i)
+		old_back[i] = BACK;
+}
+void put_back(char *vram, int vxsize, int pxsize, int pysize, 
+				int px0, int py0, char *buf, int bxsize){
+	int x, y;
+	for(y = 0; y < pysize; ++y){
+		for(x = 0; x < pxsize; ++x){
+				vram[(py0 + y) * vxsize + (px0 + x)] = buf[y * bxsize + x];				
+		}
+	}
+}
+void save_back(char *vram, int vxsize, int pxsize, int pysize, 
+				int px0, int py0, char *buf, int bxsize){
+	int x, y;
+	for(y = 0; y < pysize; ++y){
+		for(x = 0; x < pxsize; ++x){
+			buf[y * bxsize + x] = vram[(py0 + y) * vxsize + (px0 + x)];
+		}
+	}	
+}

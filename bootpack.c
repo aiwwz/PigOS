@@ -6,7 +6,7 @@ extern struct FIFO keyfifo, mousefifo;
 void HariMain(){
 	struct BOOTINFO *binfo = (struct BOOTINFO*) ADR_BOOTINFO;
 	struct MOUSE_DEC mdec;
-	char s[40], mcursor[256], keybuf[128], mousebuf[128];
+	char s[40], mcursor[256], keybuf[128], mousebuf[128], old_back[256];
 	int mx, my, i;
 
 	//初始化GDT，IDT
@@ -29,11 +29,13 @@ void HariMain(){
 	//初始化屏幕
 	init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
 	
-	init_mouse_cursor(mcursor, BACK);
+	init_mouse_cursor(mcursor);
+	init_old_back(old_back);
 	
 	mx = (binfo->scrnx - 16) / 2;	//求画面中心坐标
 	my = (binfo->scrny - 19 - 16) / 2;
-		
+	putblock(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
+	
 	enable_mouse(&mdec);
 	
 	for(;;){
@@ -60,7 +62,7 @@ void HariMain(){
 						putstr_asc(binfo->vram, binfo->scrnx, 32, 25, BLACK, s);
 						
 						//mouse
-						boxfill8(binfo->vram, binfo->scrnx, BACK, mx, my, mx + 15, my + 15);
+						put_back(binfo->vram, binfo->scrnx, 16, 16, mx, my, old_back, 16);	//复原背景					mx += mdec.x;
 						mx += mdec.x;
 						my += mdec.y;
 						if(mx < 0)
@@ -70,11 +72,14 @@ void HariMain(){
 						if(my < 0)
 							my = 0;
 						if(my > binfo->scrny - 16)
-							my = binfo->scrny - 16;
-						putblock(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
+							my = binfo->scrny - 16;						
+						
 						sprintf(s, "(%d,%d)", mx, my);
 						boxfill8(binfo->vram, binfo->scrnx, BACK, binfo->scrnx - 75, binfo->scrny - 36, binfo->scrnx - 75 + 9 * 8 - 1, binfo->scrny - 21);
 						putstr_asc(binfo->vram, binfo->scrnx, binfo->scrnx - 75, binfo->scrny - 36, BLACK, s);
+						
+						save_back(binfo->vram, binfo->scrnx, 16, 16, mx, my, old_back, 16); //保存背景
+						putblock(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
 					}
 				}	
 	}

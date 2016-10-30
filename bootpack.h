@@ -33,6 +33,9 @@ void putfont(char *vram, int xsize, int x, int y, char c, char *font);
 void putstr_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s);
 void init_mouse_cursor(char *mouse, char bc);
 void putblock(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
+void save_back(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
+void put_back(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
+void init_old_back(char *old_back);
 #define BLACK	0
 #define RED		1
 #define GREEN	2
