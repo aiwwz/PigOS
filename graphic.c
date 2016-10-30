@@ -51,21 +51,21 @@ void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, i
 
 void init_screen(char *vram, int x, int y){
 	//主面板
-	boxfill8(vram, x,	BACK,		0,       0,	x - 1,	y - 20);
+	boxfill8(vram, x,	15,	0,       0,	x - 1,	y - 20);
 	//任务栏
-	boxfill8(vram, x,	LIGHT_GRAY,	0,  y - 19,	x - 1,	y - 19);
-	boxfill8(vram, x,	WHITE,		0,  y - 18,	x - 1,	y - 18);
-	boxfill8(vram, x,	LIGHT_GRAY,	0,  y - 17,	x - 1,	y -  1);
+	boxfill8(vram, x,	8,	0,  y - 19,	x - 1,	y - 19);
+	boxfill8(vram, x,	7,	0,  y - 18,	x - 1,	y - 18);
+	boxfill8(vram, x,	8,	0,  y - 17,	x - 1,	y -  1);
 	//button
-	boxfill8(vram, x,	WHITE,		3,  y - 15,	59,	y - 15);
-	boxfill8(vram, x, 	WHITE,		2,  y - 15,	 2, y -  4);
-	boxfill8(vram, x,  	BACK,		3,  y -  4,	59,	y -  4);
-	boxfill8(vram, x,  	BACK, 		59, y - 15,	59,	y -  5);
-	boxfill8(vram, x,	BLACK,		2,  y -  3,	59,	y -  3);
-	boxfill8(vram, x,	BLACK,	 	60, y - 15,	60,	y -  3);	
+	boxfill8(vram, x,	7,	3,  y - 15,	59,		y - 15);
+	boxfill8(vram, x, 	7,	2,  y - 15,	 2, 	y -  4);
+	boxfill8(vram, x,  15,	3,  y -  4,	59,		y -  4);
+	boxfill8(vram, x,  15, 59,  y - 15,	59,		y -  5);
+	boxfill8(vram, x,	0,	2,  y -  3,	59,		y -  3);
+	boxfill8(vram, x,	0, 60,  y - 15,	60,		y -  3);	
 	//显示Logo
-	putstr_asc(vram, x, 5, 5, BLACK, "PigOS");
-	putstr_asc(vram, x, 4, 4, LIGHT_GRAY, "PigOS");
+	putstr_asc(vram, x, 5, 5, 0, "PigOS");
+	putstr_asc(vram, x, 4, 4, 8, "PigOS");
 	return;
 }
 

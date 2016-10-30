@@ -100,21 +100,3 @@ int fifo_put(struct FIFO *fifo, unsigned char data);
 int fifo_get(struct FIFO *fifo);
 int fifo_status(struct FIFO *fifo);
 
-// keyboard_mouse.c
-#define PORT_KEYDAT				0x0060
-#define PORT_KEYSTA				0x0064
-#define PORT_KEYCMD				0x0064
-#define KEYSTA_SEND_NOTREADY	0x02
-#define KEYCMD_WRITE_MODE		0x60
-#define KBC_MODE				0x47
-void wait_KBC_sendready();
-void init_keyboard();
-/*---boundary---*/
-struct MOUSE_DEC{
-	unsigned char mouse_buf[3], mouse_phase;
-	int btn, x, y;
-};
-#define KEYCMD_SENDTO_MOUSE		0xd4
-#define MOUSECMD_ENABLE			0xf4
-void enable_mouse(struct MOUSE_DEC *mdec);
-int mouse_decode(struct MOUSE_DEC *mdec, unsigned char data);
