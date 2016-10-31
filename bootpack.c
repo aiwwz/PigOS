@@ -36,7 +36,7 @@ void HariMain(){
 	
 	mx = (binfo->scrnx - 16) / 2;	//求画面中心坐标
 	my = (binfo->scrny - 19 - 16) / 2;
-	putblock(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
+	putblock(binfo->vram, binfo->scrnx,binfo->scrny, 16, 16, mx, my, mcursor, 16);
 	
 	enable_mouse(&mdec);
 	
@@ -76,19 +76,19 @@ void HariMain(){
 						my += mdec.y;
 						if(mx < 0)
 							mx = 0;
-						if(mx > binfo->scrnx - 16)	
-							mx = binfo->scrnx - 16;
+						if(mx > binfo->scrnx - 1)	
+							mx = binfo->scrnx - 1;
 						if(my < 0)
 							my = 0;
-						if(my > binfo->scrny - 16)
-							my = binfo->scrny - 16;						
+						if(my > binfo->scrny - 1)
+							my = binfo->scrny - 1;						
 						
 						sprintf(s, "(%d,%d)", mx, my);
 						boxfill8(binfo->vram, binfo->scrnx, BACK, binfo->scrnx - 75, binfo->scrny - 36, binfo->scrnx - 75 + 9 * 8 - 1, binfo->scrny - 21);
 						putstr_asc(binfo->vram, binfo->scrnx, binfo->scrnx - 75, binfo->scrny - 36, BLACK, s);
 						
 						save_back(binfo->vram, binfo->scrnx, 16, 16, mx, my, old_back, 16); //保存背景
-						putblock(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
+						putblock(binfo->vram, binfo->scrnx, binfo->scrny, 16, 16, mx, my, mcursor, 16);
 					}
 				}	
 	}

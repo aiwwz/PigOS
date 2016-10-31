@@ -51,21 +51,21 @@ void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, i
 
 void init_screen(char *vram, int x, int y){
 	//主面板
-	boxfill8(vram, x,	15,	0,       0,	x - 1,	y - 20);
+	boxfill8(vram, x,	BACK,		0,       0,	x - 1,	y - 20);
 	//任务栏
-	boxfill8(vram, x,	8,	0,  y - 19,	x - 1,	y - 19);
-	boxfill8(vram, x,	7,	0,  y - 18,	x - 1,	y - 18);
-	boxfill8(vram, x,	8,	0,  y - 17,	x - 1,	y -  1);
+	boxfill8(vram, x,	LIGHT_GRAY,	0,  y - 19,	x - 1,	y - 19);
+	boxfill8(vram, x,	WHITE,		0,  y - 18,	x - 1,	y - 18);
+	boxfill8(vram, x,	LIGHT_GRAY,	0,  y - 17,	x - 1,	y -  1);
 	//button
-	boxfill8(vram, x,	7,	3,  y - 15,	59,		y - 15);
-	boxfill8(vram, x, 	7,	2,  y - 15,	 2, 	y -  4);
-	boxfill8(vram, x,  15,	3,  y -  4,	59,		y -  4);
-	boxfill8(vram, x,  15, 59,  y - 15,	59,		y -  5);
-	boxfill8(vram, x,	0,	2,  y -  3,	59,		y -  3);
-	boxfill8(vram, x,	0, 60,  y - 15,	60,		y -  3);	
+	boxfill8(vram, x,	WHITE,		3,  y - 15,	59,	y - 15);
+	boxfill8(vram, x, 	WHITE,		2,  y - 15,	 2, y -  4);
+	boxfill8(vram, x,  	BACK,		3,  y -  4,	59,	y -  4);
+	boxfill8(vram, x,  	BACK, 		59, y - 15,	59,	y -  5);
+	boxfill8(vram, x,	BLACK,		2,  y -  3,	59,	y -  3);
+	boxfill8(vram, x,	BLACK,	 	60, y - 15,	60,	y -  3);	
 	//显示Logo
-	putstr_asc(vram, x, 5, 5, 0, "PigOS");
-	putstr_asc(vram, x, 4, 4, 8, "PigOS");
+	putstr_asc(vram, x, 5, 5, BLACK, "PigOS");
+	putstr_asc(vram, x, 4, 4, LIGHT_GRAY, "PigOS");
 	return;
 }
 
@@ -97,7 +97,7 @@ void putstr_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s){
 	return;
 }
 
-void init_mouse_cursor(char *mouse, char back_color){	//画光标
+void init_mouse_cursor(char *mouse){	//画光标
 	static char cursor[16][16] = {
 		"**************..",
 		"*OOOOOOOOOOO*...",
@@ -120,25 +120,28 @@ void init_mouse_cursor(char *mouse, char back_color){	//画光标
 	for(y = 0; y < 16; ++y){
 		for(x = 0; x < 16; ++x){
 			if(cursor[y][x] == 'O')
-				mouse[y * 16 + x] = 7;
+				mouse[y * 16 + x] = WHITE;
 			if(cursor[y][x] == '*')
-				mouse[y * 16 + x] = 0;
+				mouse[y * 16 + x] = BLACK;
 			if(cursor[y][x] == '.')
-				mouse[y * 16 + x] = back_color;
+				mouse[y * 16 + x] = BACK;
 		}
 	}
 }
-void putblock(char *vram, int vxsize, int pxsize, int pysize, 
+void putblock(char *vram, int vxsize, int vysize, int pxsize, int pysize, 
 				int px0, int py0, char *buf, int bxsize){
 	int x, y;
 	for(y = 0; y < pysize; ++y){
 		for(x = 0; x < pxsize; ++x){
-			vram[(py0 + y) * vxsize + (px0 + x)] = buf[y * bxsize + x];
+			if(py0+y < vysize && px0+x < vxsize){
+				if(buf[y * bxsize + x] != BACK){
+					vram[(py0 + y) * vxsize + (px0 + x)] = buf[y * bxsize + x];				
+				}
+			}
 		}
 	}
 	return;
 }
-
 void init_old_back(char *old_back){
 	int i;
 	for(i = 0; i < 256; ++i)
@@ -160,5 +163,5 @@ void save_back(char *vram, int vxsize, int pxsize, int pysize,
 		for(x = 0; x < pxsize; ++x){
 			buf[y * bxsize + x] = vram[(py0 + y) * vxsize + (px0 + x)];
 		}
-	}	
+	}			
 }

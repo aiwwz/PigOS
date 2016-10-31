@@ -35,7 +35,7 @@ void init_screen(char *vram,int x, int y);
 void putfont(char *vram, int xsize, int x, int y, char c, char *font);
 void putstr_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s);
 void init_mouse_cursor(char *mouse);
-void putblock(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
+void putblock(char *vram, int vxsize, int vysize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
 void save_back(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
 void put_back(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
 void init_old_back(char *old_back);
