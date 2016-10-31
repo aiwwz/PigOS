@@ -6,8 +6,10 @@ extern struct FIFO keyfifo, mousefifo;
 void HariMain(){
 	struct BOOTINFO *binfo = (struct BOOTINFO*) ADR_BOOTINFO;
 	struct MOUSE_DEC mdec;
+	struct MEMMAN *memman = (struct MEMMAN*)MEMMAN_ADDR;
 	char s[40], mcursor[256], keybuf[128], mousebuf[128], old_back[256];
 	int mx, my, i;
+	unsigned int memtotal;
 
 	//初始化GDT，IDT
 	init_gdtidt();
@@ -37,6 +39,13 @@ void HariMain(){
 	putblock(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
 	
 	enable_mouse(&mdec);
+	
+	memtotal = memtest(0x00400000, 0xbfffffff);
+	memman_init(memman);
+	memory_free(memman, 0x4000000, memtotal - 0x00400000);
+	
+	sprintf(s, "memory: %dMB  free: %dKB", memtotal/(1024*1024), memman_total(memman)/1024);
+	putstr_asc(binfo->vram, binfo->scrnx, 0, 45, BLACK, s);
 	
 	for(;;){
 		io_cli();	//屏蔽中断

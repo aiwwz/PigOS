@@ -20,9 +20,12 @@ int  io_load_eflags();
 void io_store_eflags(int eflags);
 void load_gdtr(int limit, int adrr);
 void load_idtr(int limit, int adrr);
+int  load_cr0();
+void store_cr0(int cr0);
 void asm_inthandler21();
 void asm_inthandler27();
 void asm_inthandler2c();
+unsigned int memtest_sub(unsigned int start, unsigned int end);
 
 //graphic.c
 void init_palette(void); 	//palette  n.调色板
@@ -31,7 +34,7 @@ void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, i
 void init_screen(char *vram,int x, int y);
 void putfont(char *vram, int xsize, int x, int y, char c, char *font);
 void putstr_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s);
-void init_mouse_cursor(char *mouse, char bc);
+void init_mouse_cursor(char *mouse);
 void putblock(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
 void save_back(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
 void put_back(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
@@ -121,3 +124,22 @@ struct MOUSE_DEC{
 #define MOUSECMD_ENABLE			0xf4
 void enable_mouse(struct MOUSE_DEC *mdec);
 int mouse_decode(struct MOUSE_DEC *mdec, unsigned char data);
+
+//memory_test.c
+#define EFLAGS_AC_BIT		0x00040000
+#define CRO_CACHE_DISABLE	0x60000000
+#define MEMMAN_FREES 1024
+#define MEMMAN_ADDR 0x003c0000
+struct FREEMEM{
+	unsigned int addr, size;
+};
+struct MEMMAN{
+	int frees, losts, lostsize;
+	struct FREEMEM free[MEMMAN_FREES]; //最多可分配1024段
+};
+unsigned int memtest(unsigned int start, unsigned int end);
+void memman_init(struct MEMMAN *mem);
+unsigned int memman_total(struct MEMMAN *mem); //所剩空间合计大小
+unsigned int memory_alloc(struct MEMMAN *mem, unsigned int size);
+int memory_free(struct MEMMAN *mem, unsigned int addr, unsigned int size);
+
