@@ -142,4 +142,5 @@ void memman_init(struct MEMMAN *mem);
 unsigned int memman_total(struct MEMMAN *mem); //所剩空间合计大小
 unsigned int memory_alloc(struct MEMMAN *mem, unsigned int size);
 int memory_free(struct MEMMAN *mem, unsigned int addr, unsigned int size);
-
+unsigned int memory_alloc_4k(struct MEMMAN *mem, unsigned int size);
+int memory_free_4k(struct MEMMAN *mem, unsigned int addr, unsigned int size);

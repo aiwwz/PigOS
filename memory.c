@@ -145,21 +145,20 @@ int memory_free(struct MEMMAN *mem, unsigned int addr, unsigned int size){
 	return -1; //释放内存失败
 }
 
+/*以单字节为单位很容易造成内存空间含有大量无法使用的细小碎片，
+所以我们使用4kb为单位来管理内存，即对用户请求分配和释放内存时
+均以请求内存向上取4kb的整数倍来处理。*/
+unsigned int memory_alloc_4k(struct MEMMAN *mem, unsigned int size){
+	size += 0x00000fff;  //size向上取整为4kb的倍数
+	size &= 0xfffff000;
+	return memory_alloc(mem, size);
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+int memory_free_4k(struct MEMMAN *mem, unsigned int addr, unsigned int size){
+	size += 0x00000fff;
+	size &= 0xfffff000;
+	return memory_free(mem, addr, size);
+}
 
 
 
