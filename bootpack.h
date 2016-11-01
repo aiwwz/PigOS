@@ -34,11 +34,8 @@ void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, i
 void init_screen(char *vram,int x, int y);
 void putfont(char *vram, int xsize, int x, int y, char c, char *font);
 void putstr_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s);
-void init_mouse_cursor(char *mouse);
+void init_mouse_cursor(char *mouse, int col_inv);
 void putblock(char *vram, int vxsize, int vysize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
-void save_back(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
-void put_back(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
-void init_old_back(char *old_back);
 #define BLACK	0
 #define RED		1
 #define GREEN	2
@@ -144,3 +141,34 @@ unsigned int memory_alloc(struct MEMMAN *mem, unsigned int size);
 int memory_free(struct MEMMAN *mem, unsigned int addr, unsigned int size);
 unsigned int memory_alloc_4k(struct MEMMAN *mem, unsigned int size);
 int memory_free_4k(struct MEMMAN *mem, unsigned int addr, unsigned int size);
+
+//sheet.c
+#define MAX_SHEETS 256
+struct SHEET{
+	unsigned char *buf;
+	int bxsize, bysize, vx0, vy0, height, flags, col_inv;
+	struct SHTCTL *ctl;
+};
+struct SHTCTL{
+	unsigned char *vram;
+	int xsize, ysize, top;
+	struct SHEET *sheets[MAX_SHEETS];
+	struct SHEET sheets0[MAX_SHEETS];
+};
+//为SHEET控制请求内存并初始化
+struct SHTCTL *shtctl_init(struct MEMMAN *mem, unsigned char *vram, int xsize, int ysize);
+//获取新的未使用SHEET
+struct  SHEET *sheet_alloc(struct SHTCTL *ctl);
+//设定SHEET所要显示的图像的buf
+void sheet_set_buf(struct SHEET *sht, unsigned char *buf, int xsize, int ysize, int col_inv);
+//设置SHEET的height
+void sheet_set_height(struct SHEET *sht, int height);
+//画面刷新
+void sheet_refresh(struct SHEET *sht, int bx0, int by0, int bx1, int by1);
+void sheet_refreshsub(struct SHTCTL *ctl, int vx0, int vy0, int vx1, int vy1, int h0);
+//不改变SHEET的height移动SHEET
+void sheet_slide(struct SHEET *sht, int vx0, int vy0);
+void sheet_free(struct SHEET *sht);      
+
+//window_modules.c
+void make_window(unsigned char *buf, int xsize, int ysize, char *title);
