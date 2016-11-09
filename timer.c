@@ -8,25 +8,43 @@ void init_pit(){
 	io_out8(PIT_CNT0, 0x9c);
 	io_out8(PIT_CNT0, 0x2e);
 	timerctl.count = 0;
+	timerctl.next = 0xffffffff; //因为现在没有正在运行的计时器
+	timerctl.using = 0;
 	for(i = 0; i < MAX_TIMER; i++){
-		timerctl.timer[i].flags  = 0; //定时器未使用
+		timerctl.timers0[i].flags  = 0; //计时器未使用
 	}
 	return;
 }
 
 /*时钟中断处理程序(0x20号)*/
 void inthandler20(int *esp){
-	int i;
+	int i, j;
 	io_out8(PIC0_OCW, 0x60);
 	timerctl.count++;
-	for(i = 0; i < MAX_TIMER; i++){
-		if(timerctl.timer[i].flags == TIMER_FLAGS_USING){
-			timerctl.timer[i].timeout--;
-			if(timerctl.timer[i].timeout == 0){
-				timerctl.timer[i].flags = TIMER_FLAGS_ALLOC;
-				fifo_put(timerctl.timer[i].fifo, timerctl.timer[i].data);
-			}
+	if(timerctl.next > timerctl.count){
+		return;
+	}
+	for(i = 0; i < timerctl.using; i++){
+		//timers的定时器都处于动作中，所以不确认flags
+		if(timerctl.timers[i]->timeout > timerctl.count){
+			break;
 		}
+		if(timerctl.timers[i]->timeout <= timerctl.count){
+			//超时
+			timerctl.timers[i]->flags = TIMER_FLAGS_ALLOC;
+			fifo_put(timerctl.timers[i]->fifo, timerctl.timers[i]->data);
+		}
+	}
+	//正好有i个定时器超时啦。其余的进行移位
+	timerctl.using -= i;
+	for(j = 0; j < timerctl.using; j++){
+		timerctl.timers[j] = timerctl.timers[i + j];
+	}
+	if(timerctl.using > 0){
+		timerctl.next = timerctl.timers[0]->timeout;
+	}
+	else{
+		timerctl.next = 0xffffffff;
 	}
 	return;
 }
@@ -34,9 +52,9 @@ void inthandler20(int *esp){
 struct TIMER* timer_alloc(){
 	int i;
 	for(i = 0; i < MAX_TIMER; i++){
-		if(timerctl.timer[i].flags == 0){
-			timerctl.timer[i].flags = TIMER_FLAGS_ALLOC;
-			return &timerctl.timer[i];
+		if(timerctl.timers0[i].flags == 0){
+			timerctl.timers0[i].flags = TIMER_FLAGS_ALLOC;
+			return &timerctl.timers0[i];
 		}
 	}
 	return 0;
@@ -54,9 +72,26 @@ void timer_init(struct TIMER *timer, struct FIFO *fifo, unsigned char data){
 }
 
 void timer_settime(struct TIMER *timer, unsigned int timeout){
-	timer->timeout = timeout;
+	int flags, i, j;
+	timer->timeout = timeout + timerctl.count;
 	timer->flags = TIMER_FLAGS_USING;
+	flags = io_load_eflags();
+	io_cli();
+	//搜索注册位置
+	for(i = 0; i < timerctl.using; i++){
+		if(timerctl.timers[i]->timeout >= timer->timeout){
+			break;
+		}
+	}
+	//i号之后全部后移一位
+	for(j = timerctl.using; j > i; j--){
+		timerctl.timers[j] = timerctl.timers[j - 1];
+	}
+	//添加新timer到正确的位置
+	timerctl.timers[i] = timer;
+	timerctl.next = timerctl.timers[0]->timeout;
+	timerctl.using++;
+	io_store_eflags(flags);
+	
 	return;
 }
-
-
