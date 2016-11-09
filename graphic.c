@@ -97,7 +97,7 @@ void putstr_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s){
 	return;
 }
 
-void init_mouse_cursor(char *mouse){	//画光标
+void init_mouse_cursor(char *mouse, int col_inv){	//画光标
 	static char cursor[16][16] = {
 		"**************..",
 		"*OOOOOOOOOOO*...",
@@ -124,7 +124,7 @@ void init_mouse_cursor(char *mouse){	//画光标
 			if(cursor[y][x] == '*')
 				mouse[y * 16 + x] = BLACK;
 			if(cursor[y][x] == '.')
-				mouse[y * 16 + x] = BACK;
+				mouse[y * 16 + x] = col_inv;
 		}
 	}
 }
@@ -142,26 +142,4 @@ void putblock(char *vram, int vxsize, int vysize, int pxsize, int pysize,
 	}
 	return;
 }
-void init_old_back(char *old_back){
-	int i;
-	for(i = 0; i < 256; ++i)
-		old_back[i] = BACK;
-}
-void put_back(char *vram, int vxsize, int pxsize, int pysize, 
-				int px0, int py0, char *buf, int bxsize){
-	int x, y;
-	for(y = 0; y < pysize; ++y){
-		for(x = 0; x < pxsize; ++x){
-				vram[(py0 + y) * vxsize + (px0 + x)] = buf[y * bxsize + x];				
-		}
-	}
-}
-void save_back(char *vram, int vxsize, int pxsize, int pysize, 
-				int px0, int py0, char *buf, int bxsize){
-	int x, y;
-	for(y = 0; y < pysize; ++y){
-		for(x = 0; x < pxsize; ++x){
-			buf[y * bxsize + x] = vram[(py0 + y) * vxsize + (px0 + x)];
-		}
-	}			
-}
+

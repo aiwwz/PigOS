@@ -2,6 +2,11 @@
 
 #include "bootpack.h"
 
+/*键盘缓冲区*/
+struct FIFO keyfifo;
+/*鼠标缓冲区*/
+struct FIFO mousefifo;
+
 //keyboard
 void wait_KBC_sendready(){
 	for(;;){
@@ -20,7 +25,14 @@ void init_keyboard(){
 	
 	return;
 }
- 
+ /*键盘中断处理程序(0x21号)*/
+void inthandler21(int *esp){
+	unsigned char data;
+	io_out8(PIC0_OCW, 0x61); //通知PIC0 IRQ-01已经处理完毕
+	data = io_in8(PORT_KEYDAT);	//从键盘读入信息
+	fifo_put(&keyfifo, data);
+	return;
+}
  
  //mouse
  void enable_mouse(struct MOUSE_DEC *mdec){
@@ -58,4 +70,14 @@ int mouse_decode(struct MOUSE_DEC *mdec, unsigned char data){
 		return 1;
 	}
 	return -1;
+}
+
+/*鼠标中断处理程序(0x2c号)*/
+void inthandler2c(int *esp){
+	unsigned char data;
+	io_out8(PIC1_OCW, 0x64); //通知PIC1 IRQ-01已经处理完毕
+	io_out8(PIC0_OCW, 0x62); //通知PIC0 IRQ-02已经处理完毕
+	data = io_in8(PORT_KEYDAT);
+	fifo_put(&mousefifo, data);
+	return;
 }

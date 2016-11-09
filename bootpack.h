@@ -25,6 +25,7 @@ void store_cr0(int cr0);
 void asm_inthandler21();
 void asm_inthandler27();
 void asm_inthandler2c();
+void asm_inthandler20();
 unsigned int memtest_sub(unsigned int start, unsigned int end);
 
 //graphic.c
@@ -110,6 +111,7 @@ int fifo_status(struct FIFO *fifo);
 #define KEYSTA_SEND_NOTREADY	0x02
 #define KEYCMD_WRITE_MODE		0x60
 #define KBC_MODE				0x47
+extern struct FIFO keyfifo;
 void wait_KBC_sendready();
 void init_keyboard();
 /*---boundary---*/
@@ -119,8 +121,32 @@ struct MOUSE_DEC{
 };
 #define KEYCMD_SENDTO_MOUSE		0xd4
 #define MOUSECMD_ENABLE			0xf4
+extern struct FIFO mousefifo;
 void enable_mouse(struct MOUSE_DEC *mdec);
 int mouse_decode(struct MOUSE_DEC *mdec, unsigned char data);
+
+//timer.c
+#define PIT_CTRL 0x43
+#define PIT_CNT0 0x40
+#define MAX_TIMER 500
+#define TIMER_FLAGS_ALLOC 1	//已配置状态
+#define TIMER_FLAGS_USING 2	//定时器运行中
+struct TIMER{
+	unsigned int timeout, flags;
+	struct FIFO *fifo;
+	unsigned char data;
+};
+struct TIMERCTL{
+	unsigned int count;
+	struct TIMER timer[MAX_TIMER];
+};
+extern struct TIMERCTL timerctl;
+void init_pit();
+void inthandler20(int *esp);
+struct TIMER* timer_alloc();
+void timer_free();
+void timer_init(struct TIMER *timer, struct FIFO *fifo, unsigned char data);
+void timer_settime(struct TIMER *time, unsigned int timeout);
 
 //memory_test.c
 #define EFLAGS_AC_BIT		0x00040000

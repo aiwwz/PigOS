@@ -2,7 +2,7 @@
 ; Tab = 4
 
 [FORMAT "WCOFF"]		; 制作目标文件的模式
-[INSTRSET "i486p"]
+[INSTRSET "i486p"]		; 想要使用486指令
 [BITS 32]				; 制作32位模式用的机器语言
 
 ; 之所目标文件的信息
@@ -15,8 +15,11 @@
 	GLOBAL _io_out8, _io_out16, _io_out32
 	GLOBAL _io_load_eflags, _io_store_eflags
 	GLOBAL _load_gdtr, _load_idtr
+	GLOBAL _load_cr0, _store_cr0
+	GLOBAL _memtest_sub
 	GLOBAL _asm_inthandler21, _asm_inthandler27, _asm_inthandler2c
-	EXTERN _inthandler21, _inthandler27, _inthandler2c
+	GLOBAL _asm_inthandler20
+	EXTERN _inthandler21, _inthandler27, _inthandler2c, _inthandler20
 	
 ; 以下是实际的函数
 [SECTION .text]			; 目标文件中写了这些之后再写程序
@@ -96,6 +99,15 @@ _load_idtr:			; void load_idtr(int limit, int adrr);
 		LIDT	[ESP+6]
 		RET
 
+_load_cr0:			; int load_cr0();
+		MOV		EAX,CR0
+		RET
+		
+_store_cr0:			; void store_cr0(int cr0);
+		MOV		EAX,[ESP+4]
+		MOV		CR0,EAX
+		RET
+
 _asm_inthandler21:
 		PUSH	ES
 		PUSH	DS
@@ -143,3 +155,62 @@ _asm_inthandler2c:
 		POP		DS
 		POP		ES
 		IRETD
+		
+_asm_inthandler20:
+		PUSH	ES
+		PUSH	DS
+		PUSHAD
+		MOV		EAX,ESP
+		PUSH	EAX
+		MOV		AX,SS
+		MOV 	DS,AX
+		MOV		ES,AX
+		CALL	_inthandler20
+		POP		EAX
+		POPAD
+		POP		DS
+		POP		ES
+		IRETD
+		
+_memtest_sub:	;unsigned int memtest_sub(unsigned int start, unsigned int end)
+		PUSH	EDI					;(还要使用EBX, ESI, EDI)
+		PUSH	ESI
+		PUSH	EBX
+		MOV		ESI,0xaa55aa55		;pat0 = 0xaa55aa55;
+		MOV		EDI,0x55aa55aa		;pat1 = 0x55aa55aa;
+		MOV		EAX,[ESP + 12 + 4]	;i = start;
+mts_loop:
+		MOV 	EBX,EAX				;p = i + 0xffc;
+		ADD		EBX,0xffc
+		MOV		EDX,[EBX]			;old = *p;
+		MOV		[EBX],ESI			;*p = pat0;
+		XOR		DWORD [EBX],0xffffffff;*p ^= 0xffffffff;
+		CMP		EDI,[EBX]			;if(*p != pat1)
+		JNE		mts_fin			;	goto fin;
+		XOR		DWORD [EBX],0xffffffff;*P ^= 0xffffffff;
+		CMP		ESI,[EBX]			;if(*p != pat0)
+		JNE		mts_fin			;	goto fin;
+		MOV		[EBX],EDX			;*P = old
+		ADD		EAX,0x1000			;i += 0x1000;
+		CMP 	EAX,[ESP + 12 + 8]	;if(i <= end)
+		MOV		[EBX],ESI			;*p = pat0;
+		XOR		DWORD [EBX],0xffffffff;*p ^= 0xffffffff;
+		CMP		EDI,[EBX]			;if(*p != pat1)
+		JNE		mts_fin			;	goto fin;
+		XOR		DWORD [EBX],0xffffffff;*P ^= 0xffffffff;
+		CMP		ESI,[EBX]			;if(*p != pat0)
+		JNE		mts_fin			;	goto fin;
+		MOV		[EBX],EDX			;*P = old
+		ADD		EAX,0x1000			;i += 0x1000;
+		CMP 	EAX,[ESP + 12 + 8]	;if(i <= end)
+		JBE		mts_loop			;	goto _mts_loop;
+		POP		EBX
+		POP		ESI
+		POP		EDI
+		RET
+mts_fin:
+		MOV		[EBX],EDX			; *p = old;
+		POP		EBX
+		POP		ESI
+		POP		EDI
+		RET

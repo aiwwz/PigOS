@@ -149,9 +149,10 @@ int memory_free(struct MEMMAN *mem, unsigned int addr, unsigned int size){
 所以我们使用4kb为单位来管理内存，即对用户请求分配和释放内存时
 均以请求内存向上取4kb的整数倍来处理。*/
 unsigned int memory_alloc_4k(struct MEMMAN *mem, unsigned int size){
-	size += 0x00000fff;  //size向上取整为4kb的倍数
-	size &= 0xfffff000;
-	return memory_alloc(mem, size);
+	unsigned int a;
+	size = (size + 0x00000fff) & 0xfffff000;  //size向上取整为4kb的倍数
+	a = memory_alloc(mem, size);
+	return a;
 }
 
 int memory_free_4k(struct MEMMAN *mem, unsigned int addr, unsigned int size){
@@ -159,21 +160,3 @@ int memory_free_4k(struct MEMMAN *mem, unsigned int addr, unsigned int size){
 	size &= 0xfffff000;
 	return memory_free(mem, addr, size);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
