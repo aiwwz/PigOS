@@ -5,7 +5,7 @@
 [INSTRSET "i486p"]		; 想要使用486指令
 [BITS 32]				; 制作32位模式用的机器语言
 
-; 之所目标文件的信息
+; 制作目标文件的信息
 
 [FILE "naskfunc.nas"]	; 源文件名信息
 
@@ -16,6 +16,8 @@
 	GLOBAL _io_load_eflags, _io_store_eflags
 	GLOBAL _load_gdtr, _load_idtr
 	GLOBAL _load_cr0, _store_cr0
+	GLOBAL _load_tr
+	GLOBAL _taskswitch
 	GLOBAL _memtest_sub
 	GLOBAL _asm_inthandler21, _asm_inthandler27, _asm_inthandler2c
 	GLOBAL _asm_inthandler20
@@ -108,6 +110,14 @@ _store_cr0:			; void store_cr0(int cr0);
 		MOV		CR0,EAX
 		RET
 
+_load_tr: 			; void load_tr(int tr);
+		LTR		[ESP + 4]	; tr
+		RET
+
+_taskswitch:		;void taskswitch(int eip, int cs);
+		JMP		FAR [ESP + 4] ;eip, cs
+		RET
+		
 _asm_inthandler21:
 		PUSH	ES
 		PUSH	DS
