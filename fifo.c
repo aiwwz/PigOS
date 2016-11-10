@@ -1,7 +1,7 @@
 /*设备缓冲区*/
 #include "bootpack.h"
 
-void fifo_init(struct FIFO *fifo, int size, unsigned char *buf){
+void fifo_init(struct FIFO *fifo, int size, int *buf){
 	fifo->buf = buf;
 	fifo->next_w = 0;
 	fifo->next_r = 0;
@@ -11,7 +11,7 @@ void fifo_init(struct FIFO *fifo, int size, unsigned char *buf){
 	return;
 }
 
-int fifo_put(struct FIFO *fifo, unsigned char data){
+int fifo_put(struct FIFO *fifo, int data){
 	if(fifo->free == 0){
 		fifo->flags = 1; //overflow!
 		return -1;

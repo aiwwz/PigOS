@@ -1,3 +1,5 @@
+#define NULL 0
+
 //asmhead.nas
 struct BOOTINFO{	// 0x0ff0-0x0fff
 	char cyls;		// 启动区读硬盘读到何处为止
@@ -96,11 +98,11 @@ void inthandler2c(int *esp);
 
 // fifo.c
 struct FIFO{
-	unsigned char *buf;
+	int *buf;
 	int next_w, next_r, size, free, flags;
 };
-void fifo_init(struct FIFO *fifo, int size, unsigned char *buf);
-int fifo_put(struct FIFO *fifo, unsigned char data);
+void fifo_init(struct FIFO *fifo, int size, int *buf);
+int fifo_put(struct FIFO *fifo, int data);
 int fifo_get(struct FIFO *fifo);
 int fifo_status(struct FIFO *fifo);
 
@@ -111,7 +113,6 @@ int fifo_status(struct FIFO *fifo);
 #define KEYSTA_SEND_NOTREADY	0x02
 #define KEYCMD_WRITE_MODE		0x60
 #define KBC_MODE				0x47
-extern struct FIFO keyfifo;
 void wait_KBC_sendready();
 void init_keyboard();
 /*---boundary---*/
@@ -121,8 +122,7 @@ struct MOUSE_DEC{
 };
 #define KEYCMD_SENDTO_MOUSE		0xd4
 #define MOUSECMD_ENABLE			0xf4
-extern struct FIFO mousefifo;
-void enable_mouse(struct MOUSE_DEC *mdec);
+void enable_mouse(struct FIFO *fifo, int data, struct MOUSE_DEC *mdec);
 int mouse_decode(struct MOUSE_DEC *mdec, unsigned char data);
 
 //timer.c
@@ -132,20 +132,22 @@ int mouse_decode(struct MOUSE_DEC *mdec, unsigned char data);
 #define TIMER_FLAGS_ALLOC 1	//已配置状态
 #define TIMER_FLAGS_USING 2	//定时器运行中
 struct TIMER{
+	struct TIMER *next_timer;
 	unsigned int timeout, flags;
 	struct FIFO *fifo;
-	unsigned char data;
+	int data;
 };
 struct TIMERCTL{
-	unsigned int count;
-	struct TIMER timer[MAX_TIMER];
+	unsigned int count, next_time, using;
+	struct TIMER *timer0;
+	struct TIMER timers[MAX_TIMER];
 };
 extern struct TIMERCTL timerctl;
 void init_pit();
 void inthandler20(int *esp);
 struct TIMER* timer_alloc();
 void timer_free();
-void timer_init(struct TIMER *timer, struct FIFO *fifo, unsigned char data);
+void timer_init(struct TIMER *timer, struct FIFO *fifo, int data);
 void timer_settime(struct TIMER *time, unsigned int timeout);
 
 //memory_test.c

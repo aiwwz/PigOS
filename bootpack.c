@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "bootpack.h"
+void putstr_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, int l);
 
 void HariMain(){
 	struct BOOTINFO *binfo = (struct BOOTINFO*) ADR_BOOTINFO;
@@ -7,11 +8,12 @@ void HariMain(){
 	struct MEMMAN *memman = (struct MEMMAN*)MEMMAN_ADDR;
 	struct SHEET *sht_back, *sht_mouse, *sht_win;
 	struct SHTCTL *shtctl;
-	struct FIFO timerfifo, timerfifo2, timerfifo3;
+	struct FIFO fifo;
 	struct TIMER *timer, *timer2, *timer3;
-	char s[40], keybuf[128], mousebuf[128], timerbuf[8], timerbuf2[8], timerbuf3[8];
-	unsigned char buf_mouse[256], *buf_back, *buf_win;
-	int mx, my, i;
+	char s[40];
+	int fifobuf[128];
+	unsigned char buf_mouse[256], *buf_back, *buf_win; //sheet.buf
+	int mx, my, i, count = 0;
 	unsigned int memtotal;
 
 	//初始化GDT，IDT
@@ -20,32 +22,29 @@ void HariMain(){
 	init_pic();
 	// IDT/PIC的初始化已经完成，于是开放CPU的中断
 	io_sti();
-	
-	fifo_init(&keyfifo,  128, keybuf);
-	fifo_init(&mousefifo, 128, mousebuf);
 	init_pit();
+	
+	fifo_init(&fifo, 128, fifobuf);
+	enable_mouse(&fifo, 512, &mdec);
+	init_keyboard(&fifo, 256);
 	io_out8(PIC0_IMR, 0xf8); // 开放PIC1和键盘和PIT中断(11111000)
 	io_out8(PIC1_IMR, 0xef); // 开放鼠标中断(11101111)	
 
-
+	
 	/*初始化三个计时器*/
-	fifo_init(&timerfifo,  8, timerbuf);
 	timer = timer_alloc();
-	timer_init(timer, &timerfifo, 1);
+	timer_init(timer, &fifo, 10);
 	timer_settime(timer, 1000);
-	fifo_init(&timerfifo2, 8, timerbuf2);
 	timer2 = timer_alloc();
-	timer_init(timer2, &timerfifo2, 1);
-	timer_settime(timer2, 300);
-	fifo_init(&timerfifo3, 8, timerbuf3);	
+	timer_init(timer2, &fifo, 3);
+	timer_settime(timer2, 300);	
 	timer3 = timer_alloc();
-	timer_init(timer3, &timerfifo3, 1);
+	timer_init(timer3, &fifo, 1);
 	timer_settime(timer3, 50);
 	
 	//初始化自定义的调色板
 	init_palette();
-	enable_mouse(&mdec);
-	init_keyboard();
+
 	//先将内存管理初始化
 	memtotal = memtest(0x00400000, 0xbfffffff);
 	memman_init(memman);
@@ -80,77 +79,81 @@ void HariMain(){
 	
 	for(;;){
 		//计数器
-		sprintf(s, "%010d", timerctl.count);
-		boxfill8(buf_win, 160, LIGHT_GRAY, 40, 28, 120, 44);
-		putstr_asc(buf_win, 160, 40, 28, BLACK, s);
-		sheet_refresh(sht_win, 40, 28, 120, 44);
+		count++;
 		
 		io_cli();	//屏蔽中断
-		if(fifo_status(&keyfifo) + fifo_status(&mousefifo) + fifo_status(&timerfifo) + fifo_status(&timerfifo2) + fifo_status(&timerfifo3) == 0){
+		if(fifo_status(&fifo) == 0){
 			io_sti();  //如果无事可做则取消屏蔽中断并休息
 		}
-		else if(fifo_status(&keyfifo) != 0){
-			i = fifo_get(&keyfifo);
+		else{
+			i = fifo_get(&fifo);
 			io_sti();
-			sprintf(s, "%02X", i);
-			boxfill8(buf_back, binfo->scrnx, BACK, 0, 25, 15, 40);
-			putstr_asc(buf_back, binfo->scrnx, 0, 25, WHITE, s);
-			sheet_refresh(sht_back, 0, 25, 16,41);
-		}
-		else if(fifo_status(&mousefifo) != 0){
-			i = fifo_get(&mousefifo);
-			io_sti();
-			if(mouse_decode(&mdec, i) != 0){ //鼠标数据的三个字节集齐，显示出来 
-				//mouse status
-				sprintf(s, "%02X %02X %02X", mdec.mouse_buf[0], mdec.mouse_buf[1], mdec.mouse_buf[2]);
-				boxfill8(buf_back, binfo->scrnx, BACK, 32, 25, 31 + 8 * 8, 40);
-				putstr_asc(buf_back, binfo->scrnx, 32, 25, WHITE, s);
-				sheet_refresh(sht_back, 32, 25, 31 + 8 * 8, 40);
-				//mouse
-				mx += mdec.x;
-				my += mdec.y;
-				if(mx < 0)
-					mx = 0;
-				if(mx > binfo->scrnx - 1)	
-					mx = binfo->scrnx - 1;
-				if(my < 0)
-					my = 0;
-				if(my > binfo->scrny - 1)
-					my = binfo->scrny - 1;						
+			if(256 <= i && i <= 511){ //键盘数据
+				sprintf(s, "%02X", i - 256);
+				putstr_asc_sht(sht_back, 0, 25, WHITE, BACK, s, 2);
+			}
+			else if(512 <= i && i <= 767){ //鼠标数据
+				if(mouse_decode(&mdec, i - 512) != 0){ //鼠标数据的三个字节集齐，显示出来 
+					//mouse status
+					sprintf(s, "[lbr]%02X %02X %02X", mdec.mouse_buf[0], mdec.mouse_buf[1], mdec.mouse_buf[2]);
+					if(mdec.btn & 0x01){ s[1] = 'L'; }
+					if(mdec.btn & 0x02){ s[3] = 'R'; }
+					if(mdec.btn & 0x04){ s[2] = 'B'; }
+					putstr_asc_sht(sht_back, 32, 25, WHITE, BACK, s, 13);
+					//mouse
+					mx += mdec.x;
+					my += mdec.y;
+					if(mx < 0)
+						mx = 0;
+					if(mx > binfo->scrnx - 1)	
+						mx = binfo->scrnx - 1;
+					if(my < 0)
+						my = 0;
+					if(my > binfo->scrny - 1)
+						my = binfo->scrny - 1;						
 				
-				sprintf(s, "(%d,%d)", mx, my);
-				boxfill8(buf_back, binfo->scrnx, BACK, binfo->scrnx - 75, binfo->scrny - 36, binfo->scrnx - 75 + 9 * 8 - 1, binfo->scrny - 21);
-				putstr_asc(buf_back, binfo->scrnx, binfo->scrnx - 75, binfo->scrny - 36, WHITE, s);						
-				sheet_refresh(sht_back, binfo->scrnx - 75, binfo->scrny - 36, binfo->scrnx - 75 + 9 * 8 - 1, binfo->scrny - 21);
-				sheet_slide(sht_mouse, mx, my);
+					sprintf(s, "(%d,%d)", mx, my);
+					putstr_asc_sht(sht_back, sht_back->bxsize - 75, sht_back->bysize - 36, WHITE, BACK, s, 9);
+					sheet_slide(sht_mouse, mx, my);
+				}
 			}
-		}
-		else if(fifo_status(&timerfifo) != 0){
-			i = fifo_get(&timerfifo);
-			io_sti();
-			putstr_asc(buf_back, binfo->scrnx, 0, 64, WHITE, "10[sec]");
-			sheet_refresh(sht_back, 0, 64, 56, 80);
-		}
-		else if(fifo_status(&timerfifo2) != 0){
-			i = fifo_get(&timerfifo2);
-			io_sti();
-			putstr_asc(buf_back, binfo->scrnx, 0, 80, WHITE, "3[sec]");
-			sheet_refresh(sht_back, 0, 80, 56, 96);
-		}
-		else if(fifo_status(&timerfifo3) != 0){ //模拟光标
-			i = fifo_get(&timerfifo3);
-			io_sti();
-			if(i != 0){
-				timer_init(timer3, &timerfifo3, 0);
-				boxfill8(buf_back, binfo->scrnx, WHITE, 8, 96, 15, 111);
+			else if(0 <= i && i <= 255){
+				if(i == 10){
+					putstr_asc_sht(sht_back, 0, 64, WHITE, BACK, "10[sec]", 7);
+					sprintf(s, "%010d", count);
+					putstr_asc_sht(sht_win, 40, 28, BLACK, LIGHT_GRAY, s, 10);
+				}
+				else if(i == 3){
+					putstr_asc_sht(sht_back, 0, 80, WHITE, BACK, "3[sec]", 6);
+					count = 0;
+				}
+				else{ //模拟光标
+					if(i != 0){
+						timer_init(timer3, &fifo, 0);
+						boxfill8(buf_back, binfo->scrnx, WHITE, 8, 96, 15, 111);
+					}
+					else{
+						timer_init(timer3, &fifo, 1);
+						boxfill8(buf_back, binfo->scrnx, BACK, 8, 96, 15, 111);
+					}
+					timer_settime(timer3, 50);
+					sheet_refresh(sht_back, 8, 96, 16, 112);
+				}
 			}
-			else{
-				timer_init(timer3, &timerfifo3, 1);
-				boxfill8(buf_back, binfo->scrnx, BACK, 8, 96, 15, 111);
-			}
-			timer_settime(timer3, 50);
-			sheet_refresh(sht_back, 8, 96, 16, 112);
 		}
 	}
 }
-
+/******************************
+先涂上背景色，再在上面写上字符
+x,y :显示位置的坐标
+c	:字符颜色(color)
+b	:背景颜色(back color)
+s	:字符串地址
+l 	:字符串长度
+*******************************/
+void putstr_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, int l){
+	boxfill8(sht->buf, sht->bxsize, b, x, y, x + l * 8 - 1, y + 15);
+	putstr_asc(sht->buf, sht->bxsize, x, y, c, s);
+	sheet_refresh(sht, x, y, x + l * 8, y + 16);
+	return;
+}
