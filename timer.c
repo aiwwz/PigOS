@@ -4,48 +4,41 @@ struct TIMERCTL timerctl;
 
 void init_pit(){
 	int i;
+	struct TIMER *post; //哨兵
 	io_out8(PIT_CTRL, 0x34);
 	io_out8(PIT_CNT0, 0x9c);
 	io_out8(PIT_CNT0, 0x2e);
 	timerctl.count = 0;
-	timerctl.next_time = 0xffffffff; //因为现在没有正在运行的计时器
-	timerctl.using = 0;
 	for(i = 0; i < MAX_TIMER; i++){
 		timerctl.timers[i].flags  = 0; //计时器未使用
 	}
+	/*创建哨兵*/
+	post = timer_alloc();
+	post->timeout = 0xffffffff;
+	post->flags = TIMER_FLAGS_ALLOC;
+	post->next_timer = NULL;
+	timerctl.timer0 = post;
+	timerctl.next_time = post->timeout; //next_time == 0xffffffff
+	
 	return;
 }
 
 /*时钟中断处理程序(0x20号)*/
 void inthandler20(int *esp){
-	int i;
 	struct TIMER *timer;
 	io_out8(PIC0_OCW, 0x60);
 	timerctl.count++; //计时器主变量
 	if(timerctl.next_time > timerctl.count){
 		return;
 	}
-	timer = timerctl.timer0;
-	for(i = 0; i < timerctl.using; i++){
-		//timers的定时器都处于动作中，所以不确认flags
-		if(timer->timeout > timerctl.count){
-			break;
-		}
-		else{
-			//超时
-			timer->flags = TIMER_FLAGS_ALLOC;
-			fifo_put(timer->fifo, timer->data);
-			timer = timer->next_timer;
-		}
+	
+	for(timer = timerctl.timer0; timer->timeout <= timerctl.count; timer = timer->next_timer){
+		//超时
+		timer->flags = TIMER_FLAGS_ALLOC;
+		fifo_put(timer->fifo, timer->data);	
 	}
-	timerctl.using -= i;
 	timerctl.timer0 = timer;
-	if(timerctl.using > 0){
-		timerctl.next_time = timerctl.timer0->timeout;
-	}
-	else{
-		timerctl.next_time = 0xffffffff;	
-	}
+	timerctl.next_time = timerctl.timer0->timeout;
 	return;
 }
 
@@ -72,22 +65,13 @@ void timer_init(struct TIMER *timer, struct FIFO *fifo, int data){
 }
 
 void timer_settime(struct TIMER *timer, unsigned int timeout){
-	int flags, i, j;
+	int flags;
 	struct TIMER *s , *t;
 	timer->timeout = timeout + timerctl.count;
 	timer->flags = TIMER_FLAGS_USING;
 	flags = io_load_eflags();
 	io_cli();
-	timerctl.using++;
-	/*处于运行的只有添加的这一个*/
-	if(timerctl.using == 1){
-		timerctl.timer0 = timer;
-		timer->next_timer = NULL;
-		timerctl.next_time = timerctl.timer0->timeout;
-		io_store_eflags(flags);
-		return;
-	}
-	/*处于运行的不止添加的这一个*/
+	/*因为有哨兵，所以要么最前，要么中间*/
 	//插在最前面
 	if(timer->timeout <= timerctl.timer0->timeout){
 		timer->next_timer = timerctl.timer0;
@@ -101,9 +85,6 @@ void timer_settime(struct TIMER *timer, unsigned int timeout){
 	for(;;){
 		s = t;
 		t = t->next_timer;
-		if(t == NULL){
-			break;
-		}
 		if(timer->timeout <= t->timeout){
 			/*插入到s和t之间*/
 			s->next_timer = timer;
@@ -112,12 +93,6 @@ void timer_settime(struct TIMER *timer, unsigned int timeout){
 			return;
 		}
 	}
-	//只剩末尾啦
-	s->next_timer = timer;
-	timer->next_timer = NULL;	
-	io_store_eflags(flags);
-	
-	return;
 }
 
 
