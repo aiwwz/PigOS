@@ -200,3 +200,4 @@ void sheet_free(struct SHEET *sht);
 
 //window_modules.c
 void make_window(unsigned char *buf, int xsize, int ysize, char *title);
+void make_textbox(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
