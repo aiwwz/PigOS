@@ -153,7 +153,7 @@ void timer_free();
 void timer_init(struct TIMER *timer, struct FIFO *fifo, int data);
 void timer_settime(struct TIMER *time, unsigned int timeout);
 
-//memory_test.c
+//memory.c
 #define EFLAGS_AC_BIT		0x00040000
 #define CRO_CACHE_DISABLE	0x60000000
 #define MEMMAN_FREES 1024
@@ -204,3 +204,30 @@ void sheet_free(struct SHEET *sht);
 //window_modules.c
 void make_window(unsigned char *buf, int xsize, int ysize, char *title);
 void make_textbox(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
+
+//muti_task.c_s
+#define MAX_TASKS 1000	//最大任务数量
+#define TASK_GDT0 3		//起始GDT位置
+//任务状态段
+struct TSS32{
+	int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3;
+	int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
+	int es, cs, ss, ds, fs, gs;
+	int ldtr, iomap;
+};
+struct TASK{
+	int sel, flags;  //sel: GDT中的编号
+	struct TSS32 tss;
+};
+//任务控制结构
+struct TASKCTL{
+	int running;	//当前运行任务数
+	int now; 		//当期正在运行的任务
+	struct TASK *tasks[MAX_TASKS];
+	struct TASK tasks0[MAX_TASKS];
+};
+extern struct TIMER *task_timer;
+struct TASK *task_init(struct MEMMAN *memman);
+struct TASK *task_alloc();
+void task_run(struct TASK *task);
+void task_switch();

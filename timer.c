@@ -25,6 +25,7 @@ void init_pit(){
 
 /*时钟中断处理程序(0x20号)*/
 void inthandler20(int *esp){
+	char ts = 0;
 	struct TIMER *timer;
 	io_out8(PIC0_OCW, 0x60);
 	timerctl.count++; //计时器主变量
@@ -35,10 +36,18 @@ void inthandler20(int *esp){
 	for(timer = timerctl.timer0; timer->timeout <= timerctl.count; timer = timer->next_timer){
 		//超时
 		timer->flags = TIMER_FLAGS_ALLOC;
-		fifo_put(timer->fifo, timer->data);	
+		if(timer != task_timer){ //非多道程序的时间片到
+			fifo_put(timer->fifo, timer->data);	
+		}
+		else{
+			ts = 1;
+		}
 	}
 	timerctl.timer0 = timer;
 	timerctl.next_time = timerctl.timer0->timeout;
+	if(ts == 1){
+		task_switch();
+	}
 	return;
 }
 
@@ -94,15 +103,3 @@ void timer_settime(struct TIMER *timer, unsigned int timeout){
 		}
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
